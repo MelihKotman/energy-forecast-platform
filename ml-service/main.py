@@ -69,7 +69,7 @@ def predict_energy(data:  EnergyDataInput):
     
     # Takvim Özellikleri
     df_buffer['hour'] = df_buffer.index.hour
-    df_buffer['day_of_week'] = df_buffer.index.dayofweek
+    df_buffer['dayofweek'] = df_buffer.index.dayofweek
     df_buffer['month'] = df_buffer.index.month
     
     # Gecikme (Lag) Özellikleri (Yeni eklenen 2 ve 5 dahil)
@@ -86,7 +86,7 @@ def predict_energy(data:  EnergyDataInput):
     
     # train.py'daki feature_cols listesiyle birebir aynı sıra ve isimde olmalı
     feature_cols = [
-        'hour', 'day_of_week', 'month',
+        'hour', 'dayofweek', 'month',
         'lag_1', 'lag_2', 'lag_5', 'lag_15', 'lag_30', 'lag_60',
         'rolling_mean_5', 'rolling_mean_15', 'rolling_mean_30', 'rolling_mean_60',
         'rolling_std_5', 'rolling_std_15', 'rolling_std_30', 'rolling_std_60'

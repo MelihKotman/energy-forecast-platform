@@ -104,7 +104,7 @@ func startSimulation(db *sql.DB, mlURL string, delayMs int, deviceID int, multip
 	// Sorgu çalıştırma
 	rows, err := db.Query(query)
 	if err != nil {
-		log.Fatalf("Sorgu çalıştırılamadı: %v", err)
+		log.Fatalf("Sorgu çalıştırılamadı (Cihaz %d): %v", deviceID, err)
 	}
 
 	defer rows.Close()

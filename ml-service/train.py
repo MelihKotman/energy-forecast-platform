@@ -63,7 +63,7 @@ def create_features(df):
     df.dropna(inplace=True)  # Lag ve rolling mean nedeniyle oluşan NaN değerleri düşür
     return df
 
-def train_model(df):
+def train_model():
 
     # Veriyi çek
     df = fetch_data_from_db()
@@ -119,4 +119,4 @@ def train_model(df):
     print(f"Model kaydedildi: {model_path}")
 
 if __name__ == "__main__":
-    train_model(None)  # df parametresi kullanılmıyor, çünkü veriyi DB'den çekiyoruz.
+    train_model()  # df parametresi kullanılmıyor, çünkü veriyi DB'den çekiyoruz.
