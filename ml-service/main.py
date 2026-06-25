@@ -22,6 +22,36 @@ else:
 
 # Her bir device_id için otomatik olarak veri saklamak için bir buffer oluşturuyoruz. Bu buffer, en son 75 veriyi saklayacak şekilde sınırlıdır.
 device_buffers = defaultdict(lambda: deque(maxlen=75))
+prediction_log = defaultdict(lambda: deque(maxlen=60))  # her cihaz için son tahminler
+error_log = defaultdict(lambda: deque(maxlen=30))        # her cihaz için son hatalar
+
+def update_rolling_metrics(device_id, predicted_value):
+    """Yeni bir tahmin yapıldığında çağrılır."""
+    prediction_log[device_id].append(predicted_value)
+
+def check_and_record_error(device_id, actual_value):
+    """Yeni gerçek değer geldiğinde, önceki tahminle karşılaştır."""
+    if len(prediction_log[device_id]) == 0:
+        return  # Eğer önceki tahmin yoksa, hata kaydı yapma
+    last_predicted_value = prediction_log[device_id][-1]
+    error = last_predicted_value - actual_value
+    error_log[device_id].append(error)
+
+def get_rolling_rmse(device_id):
+    """error_log'dan RMSE hesapla."""
+    errors = error_log[device_id]
+    if len(errors) == 0:
+        return None
+    rmse = np.sqrt(np.mean(np.square(errors)))
+    return float(rmse)
+
+def get_rolling_mae(device_id):
+    errors = error_log[device_id]
+    if len(errors) == 0:
+        return None
+    mae = np.mean(np.abs(errors))
+    return float(mae)
+
 
 # Pydantic ile gelen JSON verisinin otomatik doğrulamasını yapar ve snake_case ile değişken isimlerini eşleştirir.
 class EnergyDataInput(BaseModel):
@@ -100,6 +130,8 @@ def predict_energy(data:  EnergyDataInput):
         live_forecast_log = model.predict(X_live)[0]
         # Tahmini expm1 ile gerçek ölçeğe çeviriyoruz (log1p ile log dönüşümü yapılmıştı)
         live_forecast = np.expm1(live_forecast_log)
+        check_and_record_error(data.device_id, data.global_active_power)  # Hata kaydı
+        update_rolling_metrics(data.device_id, live_forecast)  # Tahmin kaydı
         model_name = "LightGBM"
     else:
         live_forecast = data.global_active_power  # Model yoksa, gelen değeri tahmin olarak döndür
@@ -111,5 +143,7 @@ def predict_energy(data:  EnergyDataInput):
         "status": "success",
         "device_id": data.device_id,
         "forecast_value": float(live_forecast),
-        "model_used": model_name
+        "model_used": model_name,
+        "rolling_rmse": get_rolling_rmse(data.device_id),
+        "rolling_mae": get_rolling_mae(data.device_id),
     }

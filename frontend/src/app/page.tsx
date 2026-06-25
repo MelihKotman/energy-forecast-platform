@@ -12,13 +12,20 @@ import {
   Legend, 
   ResponsiveContainer 
 } from 'recharts';
-import { Raleway } from 'next/font/google';
+import { Raleway, Space_Grotesk } from 'next/font/google';
 
 // Raleway fontunu Next.js üzerinden optimize ederek projeye dahil ediyoruz
 const raleway = Raleway({ 
   subsets: ['latin'],
   weight: ['400', '600', '700', '800'],
   display: 'swap',
+});
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ['latin'],
+  weight: ['500', '700'],
+  display: 'swap',
+  variable: '--font-space-grotesk',
 });
 
 // Go'dan gelecek verinin TypeScript tipini tanımlıyoruz (Data Contract)
@@ -28,6 +35,8 @@ interface DashboardMessage {
   actual_value: number;
   forecast_value: number;
   model_used: string;
+  rolling_rmse: number | null;
+  rolling_mae: number | null;
 }
 
 // React State için yeni tip: Her cihaz ID'sine karşılık gelen verileri saklamak için bir tip tanımlıyoruz
@@ -40,6 +49,63 @@ const THEME = {
   accentBlue: "#3B82F6",
   bgLight: "#F4F7FE", // Ferah açık gri arkaplan
 };
+
+function useSmoothValue(targetValue: number | null, durationMs: number = 400) {
+  const [displayValue, setDisplayValue] = useState<number | null>(targetValue);
+  const startValueRef = React.useRef<number | null>(targetValue);
+  const startTimeRef = React.useRef<number>(0);
+
+  useEffect(() => {
+    if (targetValue === null) {
+      setDisplayValue(null);
+      return;
+    }
+
+    const startValue = startValueRef.current ?? targetValue;
+    startTimeRef.current = performance.now();
+
+    let frameId: number;
+
+    const animate = () => {
+      const elapsed = performance.now() - startTimeRef.current;
+      const progress = Math.min(elapsed / durationMs, 1);
+      const current = startValue + (targetValue - startValue) * progress;
+
+      setDisplayValue(current);
+
+      if (progress < 1) {
+        frameId = requestAnimationFrame(animate);
+      } else {
+        startValueRef.current = targetValue;
+      }
+    };
+
+    frameId = requestAnimationFrame(animate);
+
+    return () => cancelAnimationFrame(frameId);
+  }, [targetValue, durationMs]);
+
+  return displayValue;
+}
+
+function KpiCard({ label, value, unit }: { label: string; value: number | null; unit: string }) {
+  const smoothValue = useSmoothValue(value, 400);
+
+  return (
+    <div className="text-right bg-gray-50 px-6 py-3 rounded-2xl border border-gray-100">
+      <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-1">{label}</p>
+      <div className={`text-3xl font-bold text-gray-800 tabular-nums ${spaceGrotesk.className}`}>
+        {smoothValue !== null ? (
+          <>
+            {smoothValue.toFixed(2)} <span className="text-sm text-gray-400 font-medium">{unit}</span>
+          </>
+        ) : (
+          <span className="text-base text-gray-400 font-semibold">Hesaplanıyor...</span>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const [dataMap, setDataMap] = useState<DeviceDataMap>({});
@@ -79,7 +145,7 @@ export default function Dashboard() {
   const activeData = dataMap[activeDevice] || [];
 
 return (
-    <div className={`flex min-h-screen bg-[${THEME.bgLight}] font-sans ${raleway.className}`}>
+    <div className={`flex min-h-screen bg-[${THEME.bgLight}] font-sans ${raleway.className} ${spaceGrotesk.variable}`}>
       
       {/* SOL KENAR ÇUBUĞU (SIDEBAR) */}
       <aside className="w-64 hidden md:flex flex-col shadow-2xl z-10" style={{ backgroundColor: THEME.sidebarBg }}>
@@ -173,14 +239,25 @@ return (
                 
                 {/* Son Değer Kutucuğu */}
                 {activeData.length > 0 && (
-                  <div className="text-right bg-gray-50 px-6 py-3 rounded-2xl border border-gray-100">
-                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-1">Anlık Yük</p>
-                    <div className="text-3xl font-black text-gray-800">
-                      {activeData[activeData.length - 1].forecast_value.toFixed(2)} <span className="text-sm text-gray-400 font-semibold">kW</span>
-                    </div>
-                  </div>
+                  <div className="flex gap-4">
+                    <KpiCard
+                    label="Anlık Yük"
+                    value={activeData[activeData.length - 1].forecast_value}
+                    unit="kW"
+                  />
+                    <KpiCard
+                    label="Rolling RMSE"
+                    value={activeData[activeData.length - 1].rolling_rmse}
+                    unit="kW"
+                  />
+                    <KpiCard
+                    label="Rolling MAE"
+                    value={activeData[activeData.length - 1].rolling_mae}
+                    unit="kW"
+                  />
+                </div>
                 )}
-              </div>
+                </div>
               
               {/* Grafik Alanı */}
               <div className="h-[400px] w-full mt-4">
@@ -200,24 +277,38 @@ return (
                     <XAxis 
                       dataKey="time" 
                       stroke="#cbd5e1" 
-                      tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 600 }} 
+                      tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 600, fontFamily: 'var(--font-space-grotesk)' }} 
                       tickMargin={15} 
                       axisLine={false} 
                       tickLine={false} 
+                      interval="preserveStartEnd"
+                      minTickGap={40}
                     />
                     <YAxis 
                       stroke="#cbd5e1" 
-                      tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 600 }} 
+                      tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 600, fontFamily: 'var(--font-space-grotesk)' }} 
                       axisLine={false} 
                       tickLine={false} 
                       dx={-10}
                     />
                     
                     <Tooltip 
-                      contentStyle={{ backgroundColor: '#fff', border: 'none', borderRadius: '12px', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' }}
+                      contentStyle={{ 
+                      backgroundColor: '#fff', 
+                      border: 'none', 
+                      borderRadius: '12px', 
+                      boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                      fontFamily: 'var(--font-space-grotesk)'
+                      }}
                       itemStyle={{ fontWeight: '700' }}
                       cursor={{ stroke: '#e2e8f0', strokeWidth: 2, strokeDasharray: '4 4' }}
-                    />
+                      formatter={(value, name) => {
+                          const numericValue = typeof value === 'number' ? value : Number(value);
+                          const label = name === 'actual_value' ? 'Gerçek Tüketim' : 'AI Tahmini';
+                          return [`${numericValue.toFixed(2)} kW`, label];
+                      }}
+                      labelFormatter={(label) => `Saat: ${label}`}
+                      />
                     
                     {/* Gerçek Veri (Lacivert Alan Grafiği) */}
                     <Area 

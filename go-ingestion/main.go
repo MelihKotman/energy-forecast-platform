@@ -37,6 +37,8 @@ type FastAPIResponse struct {
 	ForecastValue float64 `json:"forecast_value"` // Tahmin edilen tüketim değerini temsil eden alan ve json etiketini belirtiyoruz
 	ModelUsed string `json:"model_used"` // Kullanılan modeli temsil eden alan ve json etiketini belirtiyoruz
 	Message string `json:"message"` // Yanıt mesajını temsil eden alan ve json etiketini belirtiyoruz
+	RollingRMSE *float64 `json:"rolling_rmse"` // Rolling RMSE değerini temsil eden alan ve json etiketini belirtiyoruz
+	RollingMAE *float64 `json:"rolling_mae"` // Rolling MAE değerini temsil eden alan ve json etiketini belirtiyoruz
 }
 
 // Next.js'e (Frontend) canlı veri göndermek için WebSocket bağlantısını temsil eden Go Struct yapısı
@@ -46,6 +48,8 @@ type DashboardMessage struct {
 	ActualValue float64 `json:"actual_value"` // Gerçek tüketim değerini temsil eden alan ve json etiketini belirtiyoruz
 	ForecastValue float64 `json:"forecast_value"` // Tahmin edilen tüketim değerini temsil eden alan ve json etiketini belirtiyoruz
 	ModelUsed string `json:"model_used"` // Kullanılan modeli temsil eden alan ve json etiketini belirtiyoruz
+	RollingRMSE *float64 `json:"rolling_rmse"` // Rolling RMSE değerini temsil eden alan ve json etiketini belirtiyoruz
+	RollingMAE *float64 `json:"rolling_mae"` // Rolling MAE değerini temsil eden alan ve json etiketini belirtiyoruz
 }
 
 // WEBSOCKET Yönetimi
@@ -145,6 +149,8 @@ func startSimulation(db *sql.DB, mlURL string, delayMs int, deviceID int, multip
 			ActualValue:   data.GlobalActivePower,
 			ForecastValue: mlResp.ForecastValue,
 			ModelUsed:     mlResp.ModelUsed,
+			RollingRMSE:   mlResp.RollingRMSE,
+			RollingMAE:    mlResp.RollingMAE,
 		}
 
 		// 4. Bağlı Olan Tüm Dashboard'lara Canlı Yayını (Broadcast) Gönder
