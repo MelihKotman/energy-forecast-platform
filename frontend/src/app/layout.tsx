@@ -18,12 +18,12 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Sentix AI | Enerji Platformu",
+  title: "homeVolt | Enerji Platformu",
   description: "Gerçek Zamanlı AI Tüketim Analizi",
 };
 
 const THEME = {
-  sidebarBg: "#0F1E40",
+  sidebarBg: "#0b1f4c",
   bgLight: "#F4F7FE",
 };
 
@@ -40,13 +40,13 @@ export default function RootLayout({
           
           {/* SABİT SOL KENAR ÇUBUĞU (SIDEBAR) */}
           <aside className="w-64 hidden md:flex flex-col shadow-2xl z-20 shrink-0" style={{ backgroundColor: THEME.sidebarBg }}>
-            <div className="p-8 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-teal-400 flex items-center justify-center font-bold text-white shadow-[0_0_15px_rgba(45,212,191,0.5)]">
-                S
+            <div className="p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center font-bold text-yellow-400 shadow-[0_0_15px_rgba(45,212,191,0.5)]">
+                heV
               </div>
               <Link href="/">
                 <h1 className="text-xl font-extrabold text-white tracking-wide">
-                  sentix<span className="text-teal-400">.ai</span>
+                  hom<span className="text-yellow-400">eV</span>
                 </h1>
               </Link>
             </div>
