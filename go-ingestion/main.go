@@ -44,6 +44,7 @@ type FastAPIResponse struct {
 // Next.js'e (Frontend) canlı veri göndermek için WebSocket bağlantısını temsil eden Go Struct yapısı
 type DashboardMessage struct {
 	Time string `json:"time"` // Zaman bilgisini temsil eden alan ve json etiketini belirtiyoruz
+	Date string `json:"date"` // Tarih bilgisini temsil eden alan ve json etiketini belirtiyoruz
 	DeviceID int `json:"device_id"` // Cihaz ID'sini temsil eden alan ve json etiketini belirtiyoruz
 	ActualValue float64 `json:"actual_value"` // Gerçek tüketim değerini temsil eden alan ve json etiketini belirtiyoruz
 	ForecastValue float64 `json:"forecast_value"` // Tahmin edilen tüketim değerini temsil eden alan ve json etiketini belirtiyoruz
@@ -144,6 +145,7 @@ func startSimulation(db *sql.DB, mlURL string, delayMs int, deviceID int, multip
 
 		// 3. Frontend için Mesaj Paketi Oluştur
 		msg := DashboardMessage{
+			Date:          data.Time.Format("2006-01-02"), // Tarih bilgisini ekranda göstereceğiz
 			Time:          data.Time.Format("15:04:05"), // Ekranda sadece saati göstereceğiz
 			DeviceID:      data.DeviceID,
 			ActualValue:   data.GlobalActivePower,

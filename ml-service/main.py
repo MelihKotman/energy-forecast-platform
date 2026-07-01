@@ -20,8 +20,8 @@ else:
     model = None
     print(" HATA: model bulunamadı!")
 
-# Her bir device_id için otomatik olarak veri saklamak için bir buffer oluşturuyoruz. Bu buffer, en son 75 veriyi saklayacak şekilde sınırlıdır.
-device_buffers = defaultdict(lambda: deque(maxlen=75))
+# Her bir device_id için otomatik olarak veri saklamak için bir buffer oluşturuyoruz. Bu buffer, en son 120 veriyi saklayacak şekilde sınırlıdır.
+device_buffers = defaultdict(lambda: deque(maxlen=120))
 prediction_log = defaultdict(lambda: deque(maxlen=60))  # her cihaz için son tahminler
 error_log = defaultdict(lambda: deque(maxlen=30))        # her cihaz için son hatalar
 
@@ -64,6 +64,75 @@ class EnergyDataInput(BaseModel):
 def read_root():
     return {"status": "healthy", "message": "Sentix Energy Forecast ML Service is running.", "service": "ml-service"}
 
+@app.get("/hourly-summary/{device_id}")
+def get_hourly_summary(device_id: int):
+    import psycopg2
+    conn = psycopg2.connect(
+        host=os.getenv("DB_HOST"), port=os.getenv("DB_PORT"),
+        dbname=os.getenv("DB_NAME"), user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD")
+    )
+    cur = conn.cursor()
+    cur.execute("""
+        WITH latest AS (
+            SELECT MAX(time) AS max_time
+            FROM raw_consumption
+            WHERE device_id = %s
+        )
+        SELECT 
+            EXTRACT(HOUR FROM time)::int AS hour,
+            ROUND(AVG(global_active_power)::numeric, 2) AS avg_power,
+            ROUND(MAX(global_active_power)::numeric, 2) AS max_power,
+            ROUND(MIN(global_active_power)::numeric, 2) AS min_power,
+            COUNT(*) AS count
+        FROM raw_consumption, latest
+        WHERE device_id = %s
+          AND time >= latest.max_time - INTERVAL '24 hours'
+        GROUP BY hour
+        ORDER BY hour ASC
+    """, (device_id, device_id))
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return [
+        {"hour": f"{r[0]:02d}:00", "avg": float(r[1]), "max": float(r[2]), "min": float(r[3]), "count": r[4]}
+        for r in rows
+    ]
+
+@app.get("/daily-summary/{device_id}")
+def get_daily_summary(device_id: int):
+    import psycopg2
+    conn = psycopg2.connect(
+        host=os.getenv("DB_HOST"), port=os.getenv("DB_PORT"),
+        dbname=os.getenv("DB_NAME"), user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD")
+    )
+    cur = conn.cursor()
+    cur.execute("""
+        WITH latest AS (
+            SELECT MAX(time) AS max_time
+            FROM raw_consumption
+            WHERE device_id = %s
+        )
+        SELECT 
+            DATE(time) AS day,
+            ROUND(AVG(global_active_power)::numeric, 2) AS avg_power,
+            ROUND(MAX(global_active_power)::numeric, 2) AS max_power,
+            ROUND(MIN(global_active_power)::numeric, 2) AS min_power,
+            COUNT(*) AS count
+        FROM raw_consumption, latest
+        WHERE device_id = %s
+          AND time >= latest.max_time - INTERVAL '7 days'
+        GROUP BY day
+        ORDER BY day ASC
+    """, (device_id, device_id))
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return [
+        {"date": str(r[0]), "avg": float(r[1]), "max": float(r[2]), "min": float(r[3]), "count": r[4]}
+        for r in rows
+    ]
 @app.post("/predict", status_code = status.HTTP_200_OK)
 def predict_energy(data:  EnergyDataInput):
     # Gelen veri yakalanıyor ve pydantic modeline göre doğrulanıyor. 
