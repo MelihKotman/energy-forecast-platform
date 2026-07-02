@@ -30,6 +30,8 @@ homeV, akıllı sayaç verilerini kullanarak gerçek zamanlı enerji tüketim ta
 - Günlük Özet: DB'den çekilen son 7 günün karşılaştırması
 - KPI Kartları: Anlık Yük / Anlık Sapma (Rolling RMSE) / Ortalama Sapma (Rolling MAE) — renkli, beyaz yazılı
 
+![Dashboard](photos/dashboard.jpg)
+
 ### `/devices` — Cihaz Yönetimi
 - Cihaz listesi: anlık durum (Çalışıyor / Uyku Modu / Anomali), son senkronizasyon zamanı, anlık yük
 - Gantt-tipi çalışma haritası: son 2 saatlik aktif/pasif/anomali periyotları
@@ -38,13 +40,19 @@ homeV, akıllı sayaç verilerini kullanarak gerçek zamanlı enerji tüketim ta
 - Toast bildirimleri: anomali anında sağ üstte 4 saniyelik uyarı, cihaz adı + sapma miktarı
 - Üst bar anomali sayacı: aktif anomali varsa kırmızı badge
 
+![Devices](photos/devices.jpg)
+
 ### `/analytics` - Model Metrikleri
 - KPI Kartları: Global RMSE, MAE, R² Skoru ve Inference Gecikmesi (ms).
 - Feature Importance: Modelin kararlarını hangi özniteliklerin (`lag`, `rolling_mean`) yönettiğini gösteren yatay bar grafiği.
 - Residual Analysis: Tahmin ile gerçek değer arasındaki sapmaları gösteren interaktif dağılım grafiği.
 
+![Devices](photos/analytics.jpg)
+
 ### `/settings` — Sistem Ayarları
 - API/WebSocket endpoint yönetimi, bildirim tercihleri, anomali hassasiyeti ayarları ve sistem önbelleği yönetimi.
+
+![Devices](photos/settings.jpg)
 
 ## Temel Yetenekler
 
