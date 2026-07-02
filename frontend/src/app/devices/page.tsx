@@ -43,16 +43,19 @@ type LiveDeviceStatus = Record<number, {
 // Her cihaz için ayrı eşik değeri — varsayılan 1.5 kW
 type ThresholdMap = Record<number, number>;
 
-const CustomGanttTooltip = ({ active, payload, label }: any) => {
+const CustomGanttTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
+    const data = payload[0].payload;
     return (
       <div className="bg-white p-3 rounded-xl shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)] border border-gray-100">
-        <span className="block text-gray-400 text-[11px] uppercase tracking-wider mb-1 font-semibold">
-          Saat: {label}
+        <span className="block text-gray-400 text-[11px] uppercase tracking-wider mb-2 font-semibold">Saat: {data.time}</span>
+        <span className="block font-extrabold text-sm" style={{ color: data.color }}>
+          {data.statusName}
         </span>
-        <span className="block font-extrabold text-sm" style={{ color: payload[0].payload.color }}>
-          {payload[0].payload.statusName}
-        </span>
+        <div className="mt-2 text-[11px] text-gray-500 font-medium">
+          Gerçek: <span className="text-gray-800">{data.actual.toFixed(2)} kW</span><br/>
+          Tahmin: <span className="text-gray-800">{data.forecast.toFixed(2)} kW</span>
+        </div>
       </div>
     );
   }
@@ -68,6 +71,8 @@ export default function DevicesPage() {
   const [thresholds, setThresholds] = useState<ThresholdMap>({ 1: 1.5, 2: 1.5, 3: 1.5 });
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerDevice, setDrawerDevice] = useState<number>(1);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  
 
   const selectedDevice = SYSTEM_DEVICES.find(d => d.id === activeDevice);
 
@@ -134,13 +139,33 @@ export default function DevicesPage() {
   const activeData = dataMap[activeDevice] || [];
 
   const activityData = useMemo(() => {
-    return activeData.map(d => ({
-      time: d.time,
-      bandLevel: 1,
-      statusName: d.actual_value > 0.1 ? "Çalışıyor" : "Uyku Modu",
-      color: d.actual_value > 0.1 ? "#10B981" : "#A855F7",
-    }));
-  }, [activeData]);
+    return activeData.map(d => {
+      const threshold = thresholds[activeDevice] ?? 1.5;
+      const isAnomaly = Math.abs(d.actual_value - d.forecast_value) > threshold;
+      const isWorking = d.actual_value > 0.1;
+
+      // Durumu belirle
+      let statusName = "Çalışıyor";
+      let color = "#10B981"; // Yeşil
+
+      if (isAnomaly) {
+        statusName = "Anomali";
+        color = "#F43F5E"; // Kırmızı
+      } else if (!isWorking) {
+        statusName = "Uyku Modu";
+        color = "#A855F7"; // Mor
+      }
+
+      return {
+        time: d.time.split(' ')[1] || d.time,
+        bandLevel: 1,
+        statusName,
+        color,
+        actual: d.actual_value,
+        forecast: d.forecast_value
+      };
+    });
+  }, [activeData, thresholds, activeDevice]);
 
   const anomalyCount = Object.values(liveStatus).filter(s => s.hasAnomaly).length;
 
@@ -268,27 +293,61 @@ export default function DevicesPage() {
       {/* ÜST BAR */}
       <header className="w-full px-8 py-6 flex justify-between items-center bg-white/50 backdrop-blur-md border-b border-gray-100 shrink-0 z-10">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">Cihaz Envanteri</h2>
-          <p className="text-sm text-gray-500 font-medium mt-1">
-            Sistemdeki donanımları ve çalışma periyotlarını yönetin
-          </p>
+          <h2 className="text-2xl font-bold text-gray-800">Cihaz İzleme Merkezi</h2>
+          <p className="text-sm text-gray-500 font-medium mt-1">Gerçek Zamanlı AI Tüketim Analizi</p>
         </div>
-        <div className="flex items-center gap-4">
-          {anomalyCount > 0 && (
-            <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-rose-50 border border-rose-100 text-rose-600">
-              <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
-              <span className="text-xs font-bold uppercase tracking-widest">
-                {anomalyCount} Anomali
-              </span>
-            </div>
-          )}
+        
+        <div className="flex items-center gap-6">
+          
+          {/* MEVCUT: Bağlantı Durumu (LIVE SYNC / OFFLINE) */}
           <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full border ${isConnected ? 'bg-teal-50 border-teal-100 text-teal-700' : 'bg-red-50 border-red-100 text-red-700'}`}>
             <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-teal-500 animate-pulse' : 'bg-red-500'}`}></span>
-            <span className="text-xs font-bold uppercase tracking-widest">
-              {isConnected ? 'LIVE SYNC' : 'OFFLINE'}
-            </span>
+            <span className="text-xs font-bold uppercase tracking-widest">{isConnected ? 'LIVE SYNC' : 'OFFLINE'}</span>
           </div>
-          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-teal-400 shadow-sm border-2 border-white"></div>
+
+          {/* 🌟 YENİ: Kullanıcı Profil Menüsü */}
+          <div className="relative">
+            <button 
+              onClick={() => setIsProfileOpen(!isProfileOpen)}
+              className="flex items-center gap-3 hover:opacity-80 transition-opacity focus:outline-none"
+            >
+              <div className="text-right hidden md:block">
+                <p className="text-sm font-bold text-gray-800">Melih Kotman</p>
+                <p className="text-xs text-teal-500 font-semibold">Sistem Yöneticisi</p>
+              </div>
+              <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-blue-600 to-teal-400 shadow-md border-2 border-white flex items-center justify-center text-white font-bold text-sm">
+                MK
+              </div>
+            </button>
+
+            {/* Açılır Menü (Dropdown) */}
+            {isProfileOpen && (
+              <div className="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50 animate-in fade-in slide-in-from-top-2">
+                <div className="px-4 py-3 border-b border-gray-50 mb-1">
+                  <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Oturum Açık</p>
+                  <p className="text-sm font-bold text-gray-800 truncate">melih@homeV.tr</p>
+                </div>
+                
+                <button className="w-full text-left px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 hover:text-teal-600 font-medium flex items-center gap-3 transition-colors">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                  Profilim
+                </button>
+                
+                <button className="w-full text-left px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 hover:text-teal-600 font-medium flex items-center gap-3 transition-colors">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                  Hesap Ayarları
+                </button>
+                
+                <div className="h-px bg-gray-100 my-1"></div>
+                
+                <button className="w-full text-left px-4 py-2 text-sm text-rose-500 hover:bg-rose-50 font-medium flex items-center gap-3 transition-colors">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                  Güvenli Çıkış
+                </button>
+              </div>
+            )}
+          </div>
+
         </div>
       </header>
 
@@ -456,18 +515,9 @@ export default function DevicesPage() {
                         />
                         <Tooltip content={<CustomGanttTooltip />} cursor={{ fill: 'rgba(0,0,0,0.04)' }} />
                         <Bar dataKey="bandLevel" minPointSize={10} isAnimationActive={false}>
-                          {activityData.map((entry, index) => {
-                            // Son veri anomali mi kontrol et
-                            const d = activeData[index];
-                            const threshold = thresholds[activeDevice] ?? 1.5;
-                            const isAnomaly = d && Math.abs(d.actual_value - d.forecast_value) > threshold;
-                            return (
-                              <Cell
-                                key={`cell-${index}`}
-                                fill={isAnomaly ? '#F43F5E' : entry.color}
-                              />
-                            );
-                          })}
+                          {activityData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>

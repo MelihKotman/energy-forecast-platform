@@ -1,6 +1,6 @@
-# Sentix Energy Forecast Platform
+# homeV Energy Forecast Platform
 
-Sentix, akıllı sayaç verilerini kullanarak gerçek zamanlı enerji tüketim tahmini yapan, anomali tespiti ve çok sayfalı yönetim arayüzü içeren bir mikroservis mimarisi prototipidir.
+homeV, akıllı sayaç verilerini kullanarak gerçek zamanlı enerji tüketim tahmini yapan, anomali tespiti ve çok sayfalı yönetim arayüzü içeren bir mikroservis mimarisi prototipidir.
 
 ![Postgres](https://img.shields.io/badge/postgres-%23316192.svg?style=for-the-badge&logo=postgresql&logoColor=white)
 ![NumPy](https://img.shields.io/badge/NumPy-013243.svg?style=for-the-badge&logo=numpy&logoColor=white)
@@ -15,8 +15,11 @@ Sentix, akıllı sayaç verilerini kullanarak gerçek zamanlı enerji tüketim t
 - **Backend:** FastAPI (Python), `deque` tabanlı sliding-window buffer ile cihaz bazlı akış verisi yönetimi.
 - **Inference Engine:** LightGBM ile zaman serisi tahmini (lag + rolling window özellikleri, log1p dönüşümü).
 - **Communication:** WebSocket ile Go API Gateway'den frontend'e gerçek zamanlı veri akışı.
-- **Veri Toplama:** Go (goroutine'ler ile 3 cihazlı eşzamanlı simülasyon).
-- **Veritabanı:** PostgreSQL 17 + TimescaleDB (hypertable ile zaman serisi optimizasyonu).
+- **Data Collecting:** Go (goroutine'ler ile 3 cihazlı eşzamanlı simülasyon).
+- **Database:** PostgreSQL 17 + TimescaleDB (hypertable ile zaman serisi optimizasyonu).
+- **Model Metrics & XAI:** LightGBM modelinin iç yapısını sorgulayan yeni endpoint (`/model-metrics`). Gerçek zamanlı `feature_importance` ve model başarısının (R²: 0.96) canlı takibi.
+- **Production-Ready DB Entegration:** Model metriklerinin hardcoded değerler yerine doğrudan PostgreSQL/TimescaleDB üzerindeki en güncel 5000 satırlık test verisiyle (canlı feature engineering sonrası) hesaplanması.
+- **User Experience:** Avatar dropdown menüsü, profesyonel ayarlar paneli, bildirim şalterleri (toggle), canlı sistem bağlantı durumu ve anomali tespiti için dinamik görselleştirme.
 
 ## Sayfalar
 
@@ -35,6 +38,14 @@ Sentix, akıllı sayaç verilerini kullanarak gerçek zamanlı enerji tüketim t
 - Toast bildirimleri: anomali anında sağ üstte 4 saniyelik uyarı, cihaz adı + sapma miktarı
 - Üst bar anomali sayacı: aktif anomali varsa kırmızı badge
 
+### `/analytics` - Model Metrikleri
+- KPI Kartları: Global RMSE, MAE, R² Skoru ve Inference Gecikmesi (ms).
+- Feature Importance: Modelin kararlarını hangi özniteliklerin (`lag`, `rolling_mean`) yönettiğini gösteren yatay bar grafiği.
+- Residual Analysis: Tahmin ile gerçek değer arasındaki sapmaları gösteren interaktif dağılım grafiği.
+
+### `/settings` — Sistem Ayarları
+- API/WebSocket endpoint yönetimi, bildirim tercihleri, anomali hassasiyeti ayarları ve sistem önbelleği yönetimi.
+
 ## Temel Yetenekler
 
 - **Streaming Feature Engineering:** Gelen her veri noktasında lag (1, 2, 5, 15, 30, 60) ve rolling window (5, 15, 30, 60) özelliklerini canlı hesaplama; model ısınma (61 veri) tamamlanana kadar naive fallback.
@@ -43,6 +54,7 @@ Sentix, akıllı sayaç verilerini kullanarak gerçek zamanlı enerji tüketim t
 - **Tarihsel Analiz Endpointleri:** `/hourly-summary/{device_id}` ve `/daily-summary/{device_id}` — DB'deki en son veriden geriye 24 saat / 7 gün agregasyonu.
 - **Çok Cihazlı Simülasyon:** 3 farklı profil (çarpan/sapma ile) goroutine'lerle paralel çalışır, her cihazın verisi frontend'de izole tutulur.
 - **Font Sistemi:** Raleway (arayüz metinleri) + Space Grotesk (sayısal gösterimler) — tabular-nums + useSmoothValue hook ile pürüzsüz sayı animasyonu.
+
 
 ## Model Performansı
 
